@@ -14,6 +14,9 @@ struct Args {
     /// Show only permanently popular
     #[arg(short, long)]
     permanent: bool,
+    /// Use simple output (print only urls)
+    #[arg(short, long)]
+    simple: bool,
 }
 
 #[derive(Deserialize, Debug)]
@@ -25,6 +28,16 @@ struct Post {
     user_id: String,
 }
 
+impl Post {
+    fn get_pixiv_post_url(&self) -> String {
+        return format!("https://www.pixiv.net/en/artworks/{}", self.id);
+    }
+
+    fn get_pixiv_user_url(&self) -> String {
+        return format!("https://www.pixiv.net/en/users/{}", self.user_id);
+    }
+}
+
 #[derive(Deserialize, Debug)]
 struct PostList {
     recent: Vec<Post>,
@@ -32,14 +45,18 @@ struct PostList {
 }
 
 impl Display for Post {
-    fn fmt(&self, _f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        println!("Post: {}", get_pixiv_post_url(self));
-        println!("   -> Title: {}", self.title);
-        println!(
-            "   -> Posted by: {} ({})",
-            self.user_name,
-            get_pixiv_user_url(self)
-        );
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if f.alternate() {
+            println!("Post: {}", self.get_pixiv_post_url());
+            println!("   -> Title: {}", self.title);
+            println!(
+                "   -> Posted by: {} ({})",
+                self.user_name,
+                self.get_pixiv_user_url()
+            );
+        } else {
+            print!("{}", self.get_pixiv_post_url())
+        }
         Ok(())
     }
 }
@@ -51,7 +68,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "https://www.pixiv.net/ajax/search/artworks/{term}?word={term}&lang=en",
         term = args.term
     );
-    println!("Sending request to Pixiv API...");
+    if !args.simple {
+        println!("Sending request to Pixiv API...");
+    }
 
     let body = reqwest::blocking::get(&url)?.text()?;
 
@@ -73,33 +92,41 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         return Ok(());
     }
 
-    if args.permanent {
-        println!("\n\nShowing permanently popular posts: ");
-        print_posts(typed_json.permanent);
-    } else if args.recent {
-        println!("\n\nShowing recently popular posts: ");
-        print_posts(typed_json.recent);
-    } else {
-        println!("\n\nShowing permanently popular posts: ");
-        print_posts(typed_json.permanent);
-        println!("\n\nShowing recently popular posts: ");
-        print_posts(typed_json.recent);
+    if args.simple {
+        if args.permanent {
+            print_posts(&typed_json.permanent, true)
+        } else if args.recent {
+            print_posts(&typed_json.recent, true)
+        } else {
+            print_posts(&typed_json.permanent, true);
+            print_posts(&typed_json.recent, true)
+        }
+        return Ok(());
     }
 
-    println!("Took: {:.0?}", start.elapsed());
+    if args.permanent {
+        println!("\n\nShowing permanently popular posts: ");
+        print_posts(&typed_json.permanent, false);
+    } else if args.recent {
+        println!("\n\nShowing recently popular posts: ");
+        print_posts(&typed_json.recent, false);
+    } else {
+        println!("\n\nShowing permanently popular posts: ");
+        print_posts(&typed_json.permanent, false);
+        println!("\n\nShowing recently popular posts: ");
+        print_posts(&typed_json.recent, false);
+    }
+
+    println!("Took: {:.2?}", start.elapsed());
     Ok(())
 }
 
-fn print_posts(posts: Vec<Post>) {
-    for post in posts {
-        println!("{}\n", post);
+fn print_posts(posts: &Vec<Post>, simple: bool) {
+    for post in posts.iter() {
+        if !simple {
+            println!("{:#}\n", post);
+        } else {
+            println!("{}", post);
+        }
     }
-}
-
-fn get_pixiv_post_url(post: &Post) -> String {
-    return format!("https://www.pixiv.net/en/artworks/{}", post.id);
-}
-
-fn get_pixiv_user_url(post: &Post) -> String {
-    return format!("https://www.pixiv.net/en/users/{}", post.user_id);
 }
