@@ -92,29 +92,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         return Ok(());
     }
 
-    if args.simple {
-        if args.permanent {
-            print_posts(&typed_json.permanent, true)
-        } else if args.recent {
-            print_posts(&typed_json.recent, true)
-        } else {
-            print_posts(&typed_json.permanent, true);
-            print_posts(&typed_json.recent, true)
-        }
-        return Ok(());
-    }
-
     if args.permanent {
         println!("\n\nShowing permanently popular posts: ");
-        print_posts(&typed_json.permanent, false);
+        print_posts(&typed_json.permanent, args.simple);
     } else if args.recent {
         println!("\n\nShowing recently popular posts: ");
-        print_posts(&typed_json.recent, false);
+        print_posts(&typed_json.recent, args.simple);
     } else {
         println!("\n\nShowing permanently popular posts: ");
-        print_posts(&typed_json.permanent, false);
+        print_posts(&typed_json.permanent, args.simple);
         println!("\n\nShowing recently popular posts: ");
-        print_posts(&typed_json.recent, false);
+        print_posts(&typed_json.recent, args.simple);
     }
 
     println!("Took: {:.2?}", start.elapsed());
